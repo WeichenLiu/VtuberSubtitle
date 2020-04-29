@@ -536,16 +536,7 @@
 		if($("#chat-history-list").length > 0){
 			damunContainerWaiter.observe($("#chat-history-list")[0], {'childList':true, 'subtree':true});
 		}
-		else{
-			//稍后再看页面一开始没有播放器，须等待
-			let bofqiWaiter = new MutationObserver( records => {
-				if($("#chat-history-list").length > 0){
-					damunContainerWaiter.observe($("#chat-history-list")[0], {'childList':true, 'subtree':true});
-					bofqiWaiter.disconnect();
-				}
-			});
-			bofqiWaiter.observe( $("#viewlater-app .app-wrap .view-later-module")[0], {'childList':true, 'subtree':true});
-		}
+
     }
     // Your code here...
 })();
