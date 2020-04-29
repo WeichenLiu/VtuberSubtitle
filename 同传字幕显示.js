@@ -2,7 +2,7 @@
 
 // @name         同传弹幕字幕显示
 // @namespace    https://space.bilibili.com/13525042
-// @version      0.1
+// @version      0.2
 // @description  匹配直播中同传man的弹幕以字幕形式显示
 // @author       wetor (www.wetor.top)
 // @match		 *://live.bilibili.com/*
@@ -53,6 +53,7 @@
             color: #fff;
             z-index: 12;
             pointer-events: none;
+            text-shadow: rgb(0, 0, 0) 1px 0px 1px, rgb(0, 0, 0) 0px 1px 1px, rgb(0, 0, 0) 0px -1px 1px, rgb(0, 0, 0) -1px 0px 1px;
         }
         .subtitle-position {
             position: absolute;
@@ -89,8 +90,8 @@
         .subtitle-position-custom {
             ${If_Html(GM_getValue('position', 'top') == 'down', `bottom: 20px;`)}
             ${If_Html(GM_getValue('position', 'top') == 'top', `top: 20px;`)}
-            font-size: ${ GM_getValue('fontsize', 'unset')};
-            font-size: ${If_Html(GM_getValue('fontsize', 'unset') == 'unset', $(".bilibili-danmaku").css("font-size"))};
+            font-size: ${ GM_getValue('fontsize', 0)}px;
+            ${If_Html(GM_getValue('fontsize', 0) == 0, 'font-size:unset;')}
             ${If_Html( GM_getValue('color', 'original') !== 'original', `color: ${ GM_getValue('color', 'original')};`)}
 			opacity: ${ GM_getValue('textAlpha', 0.8)} ;
         }`;
@@ -114,12 +115,13 @@
 	function CreateConfigPanel() {
 		$configPanel = $(`<div style="display: none; position: fixed;top: 10px;right: 10px;z-index: 10000;background: #fff;padding: 20px 10px;border: 3px solid #00a1d6;font-size: 18px;">
 			<div style="text-align: center;">
-				<b>同传字幕设置</b>
-				<p style="font-size: smaller;">（正则表达式匹配）</p>
+				<b>同传字幕设置</b><br>
+				<label style="vertical-align: middle;">启用：</label>
+				<input name="sub-enable" type="checkbox" style="width: 20px; height: 20px; vertical-align: middle;">
 			</div>
 			<div style="padding: 20px; padding-bottom:0">
 				<div>
-					<label>匹配规则：</label>
+					<label>匹配规则(正则表达式)：</label>
                     <br>
                     <input name="match" id="match-id" type="text"  value="(.*?)【(.*?)(】|$)" style="width: 170px; height: 20px; vertical-align: middle;">
                     <br>
@@ -129,7 +131,21 @@
                 <br>
 				<div>
 				    <label>字幕行数：</label>
-				    <input name="sub-lines" type="number" placeholder="1.0" step="1" min="1" max="5" value="3" style="width: 60px; height: 20px; vertical-align: middle;">
+                    <select name="sub-lines" style="height: 30px;" >
+						<option value="1">1行</option>
+						<option value="2">2行</option>
+                        <option value="3">3行</option>
+						<option value="4">4行</option>
+                        <option value="5">5行</option>
+					</select>
+				</div>
+				<br>
+                <div>
+				    <label>历史字幕：</label>
+				    <select name="sub-order" style="height: 30px;" >
+						<option value="backward">向上堆叠</option>
+						<option value="forward">向下堆叠</option>
+					</select>
 				</div>
 				<br>
 				<div>
@@ -143,18 +159,21 @@
 				<div>
 					<label>字体大小：</label>
 					<select name="size" style="height: 30px;" >
-						<option value="unset">原大小</option>
-						<option value="18px">小</option>
-						<option value="27px">中</option>
-						<option value="38px">大</option>
+						<option value="16">16</option>
+						<option value="20">20</option>
+						<option value="24">24</option>
+						<option value="28">28</option>
+						<option value="32">32</option>
+						<option value="36">36</option>
+                        <option value="40">40</option>
 					</select>
 				</div>
 				<br>
 				<div>
-					<label style="vertical-align: middle;">底板：&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</label>
+					<label style="vertical-align: middle;">底板显示：</label>
 					<input name="background" type="checkbox" style="width: 20px; height: 20px; vertical-align: middle;">
 					<br>
-					<label style="vertical-align: middle;">透明度：&nbsp;&nbsp;&nbsp;</label>
+					<label style="vertical-align: middle;">底板透明：</label>
 					<input name="background-alpha" type="number" placeholder="1.0" step="0.05" min="0" max="1" value="0.75" style="width: 60px; height: 20px; vertical-align: middle;">
 				</div>
 				<br>
@@ -194,7 +213,7 @@
 						</div>
 					</div>
                     <br>
-					<label style="vertical-align: middle;">透明度：&nbsp;&nbsp;&nbsp;&nbsp;</label>
+					<label style="vertical-align: middle;">文字透明：</label>
 					<input name="text-alpha" type="number" placeholder="1.0" step="0.05" min="0" max="1" value="0.80" style="width: 60px; height: 20px; vertical-align: middle;">
 				</div>
 			</div>
@@ -312,6 +331,14 @@
 				}
 			</style>`);
 		}
+        //sub-enable
+        $("input[name=sub-enable]", $configPanel).prop('checked', GM_getValue('enable', true)).change(e=>{
+			GM_setValue('enable', $(e.target).prop('checked'));
+            if($(e.target).prop('checked'))
+                $('.bilibili-player-video-subtitle').css('display','');
+            else
+                $('.bilibili-player-video-subtitle').css('display','none');
+		});
         $("#btn-default", $configPanel).click(()=>{
 			$('#match-id').val('(.*?)【(.*?)(】|$)');
             //console.log($('#match-id').val())
@@ -323,14 +350,17 @@
         $("input[name=match]", $configPanel).val( GM_getValue('match', '(.*?)【(.*?)(】|$)')).change(e=>{
 			GM_setValue('match', e.target.value);
 		});
-        $("input[name=sub-lines]", $configPanel).val( GM_getValue('lines', 3)).change(e=>{
+        $("select[name=sub-lines]", $configPanel).val( GM_getValue('lines', 3)).change(e=>{
 			GM_setValue('lines', e.target.value);
+		});
+        $("select[name=sub-order]", $configPanel).val( GM_getValue('order', 'forward')).change(e=>{
+			GM_setValue('order', e.target.value);
 		});
         $("select[name=sub-position]", $configPanel).val( GM_getValue('position', 'top')).change(e=>{
 			GM_setValue('position', e.target.value);
             SetCss();
 		});
-		$("select[name=size]", $configPanel).val( GM_getValue('fontsize', 'unset')).change(e=>{
+		$("select[name=size]", $configPanel).val( GM_getValue('fontsize', 0)).change(e=>{
 			GM_setValue('fontsize', e.target.value);
 			SetCss();
 		});
@@ -452,27 +482,29 @@
                     }
                     if(showSub){
                         historySub.push(showSub);
-                        if(historySub.length>GM_getValue('lines',3)){
+                        while(historySub.length>GM_getValue('lines',3)){
                             historySub.shift();
                         }
                         showSub='';
                         var j;
-                        if(GM_getValue('position', 'top') == 'top'){
+                        if(GM_getValue('order', 'forward') == 'backward'){
                             for(j=0;j<historySub.length;j++){
-                                showSub=showSub+historySub[j];
-                                if(j!=historySub.length)
-                                    showSub=showSub+'<br>';
+                                if(j==historySub.length-1)
+                                    showSub=showSub+"<span class='subtitle-item-text subtitle-item-text-custom' style='font-weight:blod'>"+historySub[j]+"</span><br>";
+                                else
+                                    showSub=showSub+`<span class='subtitle-item-text subtitle-item-text-custom' style='font-size:${ Number(GM_getValue('fontsize', 24)) * 0.8}px'>`+historySub[j]+"</span><br>";
 
                             }
-                        }else if(GM_getValue('position', 'top') == 'down'){
+                        }else if(GM_getValue('order', 'forward') == 'forward'){ //上方
                             for(j=historySub.length-1;j>=0;j--){
-                                showSub=showSub+historySub[j];
-                                if(j!=0)
-                                    showSub=showSub+'<br>';
+                                if(j==historySub.length-1)
+                                    showSub=showSub+"<span class='subtitle-item-text subtitle-item-text-custom' style='font-weight:blod'>"+historySub[j]+"</span><br>";
+                                else
+                                    showSub=showSub+`<span class='subtitle-item-text subtitle-item-text-custom' style='font-size:${ Number(GM_getValue('fontsize', 24)) * 0.8}px'>`+historySub[j]+"</span><br>";
 
                             }
                         }
-                        $(".subtitle-item-text").html(showSub);
+                        $(".subtitle-group").html(showSub);
 
                     }
 
@@ -487,14 +519,12 @@
 				damnuObserver.observe($damunContainer[0], {'childList':true, 'subtree':true});
                 //var html="<div id='video-danmaku-sub'></div>";
                 var html=`
-                    <div class="bilibili-player-video-subtitle" style="text-shadow: none;">
+                    <div class="bilibili-player-video-subtitle">
                         <div class="subtitle-position subtitle-position-custom">
                             <div class="subtitle-wrap">
                                 <div class="subtitle-group">
-                                    <span class="subtitle-item-text subtitle-item-text-custom"  false">
-                                    </span>
+                                    <span class='subtitle-item-text subtitle-item-text-custom'>测试文本11111</span><br>
                                 </div>
-                                <div class="subtitle-group second" style="font-size: 12.2037px;"></div>
                             </div>
                         </div>
                     </div>
