@@ -469,7 +469,7 @@
 
 
                     var danmaku = $currentDanmu.attr('data-danmaku');
-                    var showSub;
+                    var showSub = '';
 
                     if(danmaku){
                         var tran = danmaku.match(GM_getValue('match',"(.*?)【(.*?)(】|$)"));
