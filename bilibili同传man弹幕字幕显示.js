@@ -2,7 +2,7 @@
 
 // @name         bilibili同传man弹幕字幕显示
 // @namespace    https://space.bilibili.com/13525042
-// @version      0.3
+// @version      0.4
 // @description  匹配直播中同传man的弹幕以字幕形式显示
 // @author       wetor (www.wetor.top)
 // @match		 *://live.bilibili.com/*
